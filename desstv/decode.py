@@ -6,7 +6,7 @@ from PIL import Image
 from scipy.signal.windows import hann
 
 from . import spec
-from .util import log_message, progress_bar
+from . import util
 
 
 def calc_lum(freq):
@@ -62,7 +62,7 @@ class SSTVDecoder(object):
         """
 
         if skip > 0.0:
-            self._samples = self._samples[round(skip * self._sample_rate) :]
+            self._samples = self._samples[round(skip * self._sample_rate):]
 
         header_end = self._find_header()
 
@@ -125,9 +125,8 @@ class SSTVDecoder(object):
         for current_sample in range(0, len(self._samples) - header_size, jump_size):
             # Update search progress message
             if current_sample % (jump_size * 256) == 0:
-                search_msg = "Searching for calibration header... {:.1f}s"
                 progress = current_sample / self._sample_rate
-                log_message(search_msg.format(progress), recur=True)
+                util.log_info("Searching for calibration header... {:.1f}s".format(progress), recur=True)
 
             search_end = current_sample + header_size
             search_area = self._samples[current_sample:search_end]
@@ -144,12 +143,10 @@ class SSTVDecoder(object):
                 and abs(self._peak_fft_freq(leader_2_area) - 1900) < 50
                 and abs(self._peak_fft_freq(vis_start_area) - 1200) < 50
             ):
-                stop_msg = "Searching for calibration header... Found!{:>4}"
-                log_message(stop_msg.format(" "))
+                util.log_info("Searching for calibration header... Found!{:>4}".format(" "))
                 return current_sample + header_size
 
-        log_message()
-        log_message("Couldn't find SSTV header in the given audio file", err=True)
+        util.log_error("Couldn't find SSTV header in the given audio file")
         return None
 
     def _decode_vis(self, vis_start):
@@ -160,7 +157,7 @@ class SSTVDecoder(object):
 
         for bit_idx in range(8):
             bit_offset = vis_start + bit_idx * bit_size
-            section = self._samples[bit_offset : bit_offset + bit_size]
+            section = self._samples[bit_offset: bit_offset + bit_size]
             freq = self._peak_fft_freq(section)
             # 1100 hz = 1, 1300hz = 0
             vis_bits.append(int(freq <= 1200))
@@ -180,7 +177,7 @@ class SSTVDecoder(object):
             raise ValueError(error.format(vis_value))
 
         mode = spec.VIS_MAP[vis_value]
-        log_message("Detected SSTV mode {}".format(mode.NAME))
+        util.log_info("Detected SSTV mode {}".format(mode.NAME))
 
         return mode
 
@@ -244,8 +241,7 @@ class SSTVDecoder(object):
                     # Align to start of sync pulse
                     seq_start = self._align_sync(seq_start)
                     if seq_start is None:
-                        log_message()
-                        log_message("Reached end of audio whilst decoding.")
+                        util.log_warn("Reached end of audio whilst decoding, the image will be incomplete.")
                         return image_data
 
                 pixel_time = self.mode.PIXEL_TIME
@@ -265,8 +261,7 @@ class SSTVDecoder(object):
 
                     # If we are performing fft past audio length, stop early
                     if px_end >= len(self._samples):
-                        log_message()
-                        log_message("Reached end of audio whilst decoding.")
+                        util.log_warn("Reached end of audio whilst decoding, the image will be incomplete.")
                         return image_data
 
                     pixel_area = self._samples[px_pos:px_end]
@@ -274,7 +269,7 @@ class SSTVDecoder(object):
 
                     image_data[line][chan][px] = calc_lum(freq)
 
-            progress_bar(line, height - 1, "Decoding image...")
+            util.progress_bar(line, height - 1, "Decoding image...")
 
         return image_data
 
@@ -294,7 +289,7 @@ class SSTVDecoder(object):
         image = Image.new(col_mode, (width, height))
         pixel_data = image.load()
 
-        log_message("Drawing image data...")
+        util.log_info("Drawing image data...", recur=True)
 
         for y in range(height):
             odd_line = y % 2
@@ -324,5 +319,5 @@ class SSTVDecoder(object):
         if image.mode != "RGB":
             image = image.convert("RGB")
 
-        log_message("...Done!")
+        util.log_info("Drawing image data... Done!")
         return image

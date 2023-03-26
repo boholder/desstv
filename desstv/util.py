@@ -1,39 +1,37 @@
 """Shared methods"""
+import os
+import sys
 
-from os import get_terminal_size
-from sys import stderr, stdout, platform
+
+def log_error(message):
+    print(f"[desstv] ERROR | {message}", file=sys.stderr)
 
 
-def log_message(message="", show=True, err=False, recur=False, prefix=True):
-    """Simple print wrapper"""
+def log_warn(message=""):
+    print(f"[desstv] WARN  | {message}", file=sys.stderr)
 
-    if not show:
-        return
-    out = stdout
-    if err:
-        out = stderr
+
+def log_info(message="", recur=False):
     end = "\n"
     if recur:
         end = "\r"
-        if platform == "win32":
-            message = "".join(["\r", message])
-        cols = get_terminal_size().columns
+        if sys.platform == "win32":
+            message = "".join(["\r[desstv] INFO | ", message])
+        cols = os.get_terminal_size().columns
         if cols < len(message):
             message = message[:cols]
-    if prefix:
-        message = " ".join(["[desstv]", message])
 
-    print(message, file=out, end=end)
+    print(f"[desstv] INFO  | {message}", file=sys.stderr, end=end)
 
 
 def progress_bar(progress, complete, message="", show=True):
-    """Simple loading bar"""
+    """Dynamic refreshing loading bar"""
 
     if not show:
         return
 
-    message_size = len(message) + 7  # prefix size
-    cols = get_terminal_size().columns
+    message_size = len(message) + 18  # prefix size of "[desstv] INFO  | "
+    cols = os.get_terminal_size().columns
     percent_on = True
     level = progress / complete
     bar_size = min(cols - message_size - 10, 100)
@@ -51,4 +49,4 @@ def progress_bar(progress, complete, message="", show=True):
 
     align = cols - message_size - len(percent)
     not_end = progress != complete
-    log_message("{}{:>{width}}{}".format(message, bar, percent, width=align), recur=not_end)
+    log_info("{}{:>{width}}{}".format(message, bar, percent, width=align), recur=not_end)
