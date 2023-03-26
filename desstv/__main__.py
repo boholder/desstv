@@ -1,21 +1,20 @@
 """Main entry point for command line program"""
 
 import signal
-from sys import exit
+from sys import exit, argv
 
-from desstv.command import SSTVCommand
-from desstv.util import log_message
+from . import util
+from .command import SSTVCommand
 
 
-def handle_sigint(signal, frame):
-    print()
-    log_message("Received interrupt signal, exiting.")
+def handle_sigint(_, __):
+    util.log_info("Received interrupt signal, exiting.")
     exit(0)
 
 
 def main():
     signal.signal(signal.SIGINT, handle_sigint)
-    with SSTVCommand() as prog:
+    with SSTVCommand(argv[1:]) as prog:
         prog.start()
 
 

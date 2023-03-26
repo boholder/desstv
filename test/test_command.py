@@ -55,7 +55,7 @@ class SSTVCommandTestCase(unittest.TestCase):
         """Test decode flag with no input"""
         args = SSTVCommand(["-d", "./test/data/m1.ogg"]).args
         self.assertTrue(hasattr(args, "audio_file"), "audio_file attribute not set")
-        self.assertEqual(args.audio_file.name, "./test/data/m1.ogg", "Audio file name not set correctly")
+        self.assertEqual(args.audio_file, "./test/data/m1.ogg", "Audio file name not set correctly")
         self.assertTrue(hasattr(args, "skip"), "skip attribute not set")
         self.assertEqual(args.skip, 0.0, "skip value not set to default value")
 

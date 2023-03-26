@@ -1,15 +1,17 @@
 """Parsing arguments and starting program from command line"""
 
 import argparse
-from sys import argv, exit
+import os.path
+from sys import exit
+from typing import BinaryIO
 
 from PIL import Image
 from soundfile import available_formats as available_audio_formats
 
-from .common import log_message
+from . import util
+from .convert import AdditionalAudioFormatSupport
 from .decode import SSTVDecoder
 from .spec import VIS_MAP
-from .util import log_message
 
 
 class SSTVCommand(object):
@@ -26,27 +28,41 @@ examples:
   Start decoding SSTV signal at 50.5 seconds into the audio
     $ desstv -d audio.ogg -s 50.50"""
 
-    def __init__(self, shell_args=None):
+    def __init__(self, shell_args):
         """Handle command line arguments"""
 
-        self._audio_file = None
-        self._output_file = None
+        self.args = self.parse_args(shell_args)
+        self._output_file: str = self.args.output_file
+        self._skip = self.args.skip
 
-        if shell_args is None:
-            self.args = self.parse_args(argv[1:])
-        else:
-            self.args = self.parse_args(shell_args)
+        audio_file = self.args.audio_file
+        if not os.path.exists(audio_file):
+            util.log_error("No such file or directory: '{}'".format(audio_file))
+            exit(2)
+        self._audio_file: BinaryIO = AdditionalAudioFormatSupport.handle_audio_file(audio_file)
 
-    def __enter__(self):
-        return self
+    def parse_args(self, shell_args):
+        """Parse command line arguments"""
 
-    def __exit__(self, exc_type, exc_val, traceback):
-        self.close()
+        parser = self.build_parser()
+        args = parser.parse_args(shell_args)
 
-    def __del__(self):
-        self.close()
+        if args.list_modes:
+            self.list_supported_modes()
+            exit(0)
+        if args.list_audio_formats:
+            self.list_supported_audio_formats()
+            exit(0)
+        if args.list_image_formats:
+            self.list_supported_image_formats()
+            exit(0)
+        if args.audio_file is None:
+            parser.print_help()
+            exit(2)
 
-    def init_args(self):
+        return args
+
+    def build_parser(self):
         """Initialise argparse parser"""
 
         version = "desstv 0.1"
@@ -55,9 +71,7 @@ examples:
             prog="desstv", formatter_class=argparse.RawDescriptionHelpFormatter, epilog=self.examples_of_use
         )
 
-        parser.add_argument(
-            "-d", "--decode", type=argparse.FileType("rb"), help="decode SSTV audio file", dest="audio_file"
-        )
+        parser.add_argument("-d", "--decode", type=str, help="decode SSTV audio file", dest="audio_file")
         parser.add_argument(
             "-o",
             "--output",
@@ -85,31 +99,14 @@ examples:
         )
         return parser
 
-    def parse_args(self, shell_args):
-        """Parse command line arguments"""
+    def __enter__(self):
+        return self
 
-        parser = self.init_args()
-        args = parser.parse_args(shell_args)
+    def __exit__(self, exc_type, exc_val, traceback):
+        self.close()
 
-        self._audio_file = args.audio_file
-        self._output_file = args.output_file
-        self._skip = args.skip
-
-        if args.list_modes:
-            self.list_supported_modes()
-            exit(0)
-        if args.list_audio_formats:
-            self.list_supported_audio_formats()
-            exit(0)
-        if args.list_image_formats:
-            self.list_supported_image_formats()
-            exit(0)
-
-        if self._audio_file is None:
-            parser.print_help()
-            exit(2)
-
-        return args
+    def __del__(self):
+        self.close()
 
     def start(self):
         """Start decoder"""
@@ -122,22 +119,26 @@ examples:
             try:
                 img.save(self._output_file)
             except (KeyError, ValueError):
-                log_message("Error saving file, saved to result.png instead", err=True)
+                util.log_error("Error saving file, saved to result.png instead")
                 img.save("result.png")
 
     def close(self):
         """Closes any input/output files if they exist"""
-
-        if self._audio_file is not None and not self._audio_file.closed:
-            self._audio_file.close()
+        try:
+            if self._audio_file is not None and not self._audio_file.closed:
+                self._audio_file.close()
+        except AttributeError:
+            pass
 
     @staticmethod
     def list_supported_modes():
         modes = ", ".join([fmt.NAME for fmt in VIS_MAP.values()])
         print("Supported modes: {}".format(modes))
 
-    def list_supported_audio_formats(self):
-        audio_formats = ", ".join(available_audio_formats().keys())
+    @staticmethod
+    def list_supported_audio_formats():
+        additional_formats = [e.upper() for e in AdditionalAudioFormatSupport.formats()]
+        audio_formats = ", ".join(available_audio_formats().keys() + additional_formats)
         print("Supported audio formats: {}".format(audio_formats))
 
     @staticmethod
