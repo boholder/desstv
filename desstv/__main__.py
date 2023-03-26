@@ -4,7 +4,7 @@ import signal
 from sys import exit
 
 from desstv.command import SSTVCommand
-from desstv.common import log_message
+from desstv.util import log_message
 
 
 def handle_sigint(signal, frame):

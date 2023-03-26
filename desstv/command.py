@@ -9,6 +9,7 @@ from soundfile import available_formats as available_audio_formats
 from .common import log_message
 from .decode import SSTVDecoder
 from .spec import VIS_MAP
+from .util import log_message
 
 
 class SSTVCommand(object):
@@ -130,7 +131,8 @@ examples:
         if self._audio_file is not None and not self._audio_file.closed:
             self._audio_file.close()
 
-    def list_supported_modes(self):
+    @staticmethod
+    def list_supported_modes():
         modes = ", ".join([fmt.NAME for fmt in VIS_MAP.values()])
         print("Supported modes: {}".format(modes))
 
@@ -138,7 +140,8 @@ examples:
         audio_formats = ", ".join(available_audio_formats().keys())
         print("Supported audio formats: {}".format(audio_formats))
 
-    def list_supported_image_formats(self):
+    @staticmethod
+    def list_supported_image_formats():
         Image.init()
         image_formats = ", ".join(Image.SAVE.keys())
         print("Supported image formats: {}".format(image_formats))

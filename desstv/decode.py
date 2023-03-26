@@ -6,7 +6,7 @@ from PIL import Image
 from scipy.signal.windows import hann
 
 from . import spec
-from .common import log_message, progress_bar
+from .util import log_message, progress_bar
 
 
 def calc_lum(freq):
@@ -17,7 +17,7 @@ def calc_lum(freq):
 
 
 def barycentric_peak_interp(bins, largest_bin_index):
-    """Interpolate between frequency bins to find x value of peak"""
+    """Interpolate between frequency bins to find peak frequency"""
 
     # Takes x as the index of the largest bin and
     # interpolates the x value of the peak using neighbours in the bins array
