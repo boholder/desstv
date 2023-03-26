@@ -3,18 +3,19 @@
 import signal
 from sys import exit
 
-import sstv
+from desstv.command import SSTVCommand
+from desstv.common import log_message
 
 
 def handle_sigint(signal, frame):
     print()
-    sstv.common.log_message("Received interrupt signal, exiting.")
+    log_message("Received interrupt signal, exiting.")
     exit(0)
 
 
 def main():
     signal.signal(signal.SIGINT, handle_sigint)
-    with sstv.SSTVCommand() as prog:
+    with SSTVCommand() as prog:
         prog.start()
 
 

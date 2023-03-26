@@ -1,0 +1,31 @@
+# Drawing on:
+# https://pre-commit.ci/
+# https://pre-commit.com/#usage
+# https://github.com/pdm-project/pdm/blob/main/.pre-commit-config.yaml
+# https://github.com/nonebot/nonebot2/blob/master/.pre-commit-config.yaml
+
+ci:
+  autoupdate_schedule: monthly
+  autofix_commit_msg: "Auto fix by pre-commit hooks"
+  autoupdate_commit_msg: "Auto update by pre-commit hooks"
+
+repos:
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: 'v0.0.254'
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix, --show-fixes]
+
+  # code style formatting
+  # see pyproject.toml for config
+  - repo: https://github.com/psf/black
+    rev: 23.1.0
+    hooks:
+      - id: black
+
+  # typo checking
+  # see setup.cfg for config
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.2
+    hooks:
+      - id: codespell
