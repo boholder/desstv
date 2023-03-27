@@ -12,11 +12,12 @@ def log_warn(message=""):
 
 
 def log_info(message="", recur=False):
+    """recur param for letting next line of log override current one."""
     end = "\n"
     if recur:
         end = "\r"
         if sys.platform == "win32":
-            message = "".join(["\r[desstv] INFO | ", message])
+            message = "".join(["\r[desstv] INFO  | ", message])
         cols = os.get_terminal_size().columns
         if cols < len(message):
             message = message[:cols]

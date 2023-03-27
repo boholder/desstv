@@ -8,7 +8,9 @@ from .command import SSTVCommand
 
 
 def handle_sigint(_, __):
-    util.log_info("Received interrupt signal, exiting.")
+    # this line for break recur mode of previous log.
+    util.log_info()
+    util.log_info("Received interrupt signal, exiting...")
     exit(0)
 
 

@@ -5,6 +5,8 @@ from typing import Callable, BinaryIO
 
 import pydub
 
+from . import util
+
 
 def mp3_to_ogg(mp3_file_path: str) -> BufferedReader:
     ogg_file_path = get_temp_ogg_file_path(mp3_file_path)
@@ -36,10 +38,14 @@ class AdditionalAudioFormatSupport(object):
         Anyway the returned value is always acceptable for audio file processing library.
         """
 
-        file_suffix = os.path.basename(file_path).split(".")[-1]
+        file_name = os.path.basename(file_path)
+        file_suffix = file_name.split(".")[-1]
 
         if file_suffix in AdditionalAudioFormatSupport.supported:
+            util.log_info(f"Preprocessing [{file_name}]...", recur=True)
             handler = AdditionalAudioFormatSupport.supported[file_suffix]
-            return handler(file_path)
+            ogg_file_stream = handler(file_path)
+            util.log_info(f"Preprocessing [{file_name}]... Done!")
+            return ogg_file_stream
         else:
             return open(file_path, "rb")

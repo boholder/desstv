@@ -16,21 +16,20 @@ def calc_lum(freq):
     return min(max(lum, 0), 255)
 
 
-def barycentric_peak_interp(bins, largest_bin_index):
+def barycentric_peak_interp(bins, x):
     """Interpolate between frequency bins to find peak frequency"""
 
-    # Takes x as the index of the largest bin and
-    # interpolates the x value of the peak using neighbours in the bins array
+    # Takes x as the index of the largest bin.
+    # Interpolates the x value of the peak using neighbours in the bins array.
+    # Make sure data is in bounds.
+    left = bins[max(0, x - 1)]
+    right = bins[min(len(bins) - 1, x + 1)]
 
-    # Make sure data is in bounds
-    left = bins[max(0, largest_bin_index - 1)]
-    right = bins[min(len(bins) - 1, largest_bin_index + 1)]
-
-    denom = left + bins[largest_bin_index] + right
+    denom = left + bins[x] + right
     if denom == 0:
         return 0  # erroneous
 
-    return (right - left) / denom + largest_bin_index
+    return ((right - left) / denom) + x
 
 
 class SSTVDecoder(object):
@@ -62,7 +61,7 @@ class SSTVDecoder(object):
         """
 
         if skip > 0.0:
-            self._samples = self._samples[round(skip * self._sample_rate):]
+            self._samples = self._samples[round(skip * self._sample_rate) :]
 
         header_end = self._find_header()
 
@@ -157,7 +156,7 @@ class SSTVDecoder(object):
 
         for bit_idx in range(8):
             bit_offset = vis_start + bit_idx * bit_size
-            section = self._samples[bit_offset: bit_offset + bit_size]
+            section = self._samples[bit_offset : bit_offset + bit_size]
             freq = self._peak_fft_freq(section)
             # 1100 hz = 1, 1300hz = 0
             vis_bits.append(int(freq <= 1200))
@@ -177,7 +176,7 @@ class SSTVDecoder(object):
             raise ValueError(error.format(vis_value))
 
         mode = spec.VIS_MAP[vis_value]
-        util.log_info("Detected SSTV mode {}".format(mode.NAME))
+        util.log_info("Detected SSTV mode [{}]".format(mode.NAME))
 
         return mode
 
@@ -241,7 +240,7 @@ class SSTVDecoder(object):
                     # Align to start of sync pulse
                     seq_start = self._align_sync(seq_start)
                     if seq_start is None:
-                        util.log_warn("Reached end of audio whilst decoding, the image will be incomplete.")
+                        util.log_warn("Reached end of audio whilst decoding, the image will be incomplete")
                         return image_data
 
                 pixel_time = self.mode.PIXEL_TIME
@@ -261,7 +260,7 @@ class SSTVDecoder(object):
 
                     # If we are performing fft past audio length, stop early
                     if px_end >= len(self._samples):
-                        util.log_warn("Reached end of audio whilst decoding, the image will be incomplete.")
+                        util.log_warn("Reached end of audio whilst decoding, the image will be incomplete")
                         return image_data
 
                     pixel_area = self._samples[px_pos:px_end]

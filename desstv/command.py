@@ -37,7 +37,7 @@ examples:
 
         audio_file = self.args.audio_file
         if not os.path.exists(audio_file):
-            util.log_error("No such file or directory: '{}'".format(audio_file))
+            util.log_error("No such file or directory: [{}]".format(audio_file))
             exit(2)
         self._audio_file: BinaryIO = AdditionalAudioFormatSupport.handle_audio_file(audio_file)
 
@@ -119,7 +119,7 @@ examples:
             try:
                 img.save(self._output_file)
             except (KeyError, ValueError):
-                util.log_error("Error saving file, saved to result.png instead")
+                util.log_error("Error saving file, saved to ./result.png instead")
                 img.save("result.png")
 
     def close(self):
