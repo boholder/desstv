@@ -5,7 +5,7 @@ from typing import Callable, BinaryIO
 
 import pydub
 
-from . import util
+from desstv import util
 
 
 def mp3_to_ogg(mp3_file_path: str) -> BufferedReader:

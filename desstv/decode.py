@@ -5,8 +5,8 @@ import soundfile
 from PIL import Image
 from scipy.signal.windows import hann
 
-from . import spec
-from . import util
+from desstv import spec
+from desstv import util
 
 
 def calc_lum(freq):

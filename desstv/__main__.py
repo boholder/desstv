@@ -3,8 +3,8 @@
 import signal
 from sys import exit, argv
 
-from . import util
-from .command import SSTVCommand
+from desstv import util
+from desstv.command import SSTVCommand
 
 
 def handle_sigint(_, __):

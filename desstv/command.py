@@ -8,10 +8,10 @@ from typing import BinaryIO
 from PIL import Image
 from soundfile import available_formats as available_audio_formats
 
-from . import util
-from .convert import AdditionalAudioFormatSupport
-from .decode import SSTVDecoder
-from .spec import VIS_MAP
+from desstv import util
+from desstv.convert import AdditionalAudioFormatSupport
+from desstv.decode import SSTVDecoder
+from desstv.spec import VIS_MAP
 
 
 class SSTVCommand(object):
