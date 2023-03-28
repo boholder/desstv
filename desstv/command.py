@@ -113,13 +113,14 @@ examples:
 
         with SSTVDecoder(self._audio_file) as sstv:
             img = sstv.decode(self._skip)
-            if img is None:  # No SSTV signal found
+            if img is None:
+                util.log_error(f"No SSTV signal found in [{self._audio_file}]")
                 exit(2)
 
             try:
                 img.save(self._output_file)
             except (KeyError, ValueError):
-                util.log_error("Error saving file, saved to ./result.png instead")
+                util.log_error("Error saving file, saved to [./result.png] instead")
                 img.save("result.png")
 
     def close(self):
