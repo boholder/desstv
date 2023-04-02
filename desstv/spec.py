@@ -185,11 +185,30 @@ class R72(R36):
 
 VIS_MAP = {8: R36, 12: R72, 40: M2, 44: M1, 56: S2, 60: S1, 76: SDX}
 
-BREAK_OFFSET = 0.300
-LEADER_OFFSET = 0.010 + BREAK_OFFSET
-VIS_START_OFFSET = 0.300 + LEADER_OFFSET
-
-HDR_SIZE = 0.030 + VIS_START_OFFSET
-HDR_WINDOW_SIZE = 0.010
-
+# The calibration header with VIS(Vertical Interval Signaling) code
+# (code that tells which mode this audio used)
+# ------------------------------
+# time(ms) freq(hz) meaning
+# 300       1900    Leader tone
+# 10        1200    Break
+# 300       1900    Leader tone
+# 30        1200    VIS start bit
+# 7(+1) bits for indicating mode...
+# 30        1200    VIS stop bit
+# ------------------------------
+LEADER_TONE_SIZE = 0.300
+BREAK_SIZE = 0.010
 VIS_BIT_SIZE = 0.030
+
+# These OFFSET variables' values describe the start time point of each part
+BREAK_OFFSET = LEADER_TONE_SIZE
+SECOND_LEADER_OFFSET = BREAK_OFFSET + BREAK_SIZE
+VIS_START_BIT_OFFSET = BREAK_OFFSET + SECOND_LEADER_OFFSET
+
+# To be correct, the "VIS start bit" should not be included in the "header",
+# we include it here for convenience
+HDR_SIZE = VIS_START_BIT_OFFSET + VIS_BIT_SIZE
+
+# Our custom frequency checking window size and skip size for finding the header
+SEARCH_WINDOW_SIZE = 0.010
+JUMP_SIZE = 0.002

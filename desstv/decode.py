@@ -17,7 +17,7 @@ def calc_lum(freq):
 
 
 def barycentric_peak_interp(bins, x):
-    """Interpolate between frequency bins to find peak frequency"""
+    """Interpolate between frequency bins to find peak frequency with Barycentric Interpolation method."""
 
     # Takes x as the index of the largest bin.
     # Interpolates the x value of the peak using neighbours in the bins array.
@@ -37,12 +37,16 @@ class SSTVDecoder(object):
 
     def __init__(self, audio_file):
         self.mode = None
-
         self._audio_file = audio_file
 
-        self._samples, self._sample_rate = soundfile.read(self._audio_file)
+        # https://www.adobe.com/uk/creativecloud/video/discover/audio-sampling.html
+        soundfile_read: tuple[np.ndarray, int] = soundfile.read(self._audio_file)
+        self._samples, self._sample_rate = soundfile_read
 
-        if self._samples.ndim > 1:  # convert to mono if stereo
+        # Convert to mono if stereo
+        # (If there is more than one channel in this audio file, convert all channels into one)
+        # https://splice.com/blog/multi-channel-audio-stereo-image/
+        if self._samples.ndim > 1:
             self._samples = self._samples.mean(axis=1)
 
     def __enter__(self):
@@ -58,10 +62,12 @@ class SSTVDecoder(object):
         """
         Attempts to decode the SSTV signal inside the audio data.
         Returns a PIL image on success, and None if no SSTV signal was found.
+
+        :param skip: time in seconds to start decoding signal at
         """
 
         if skip > 0.0:
-            self._samples = self._samples[round(skip * self._sample_rate):]
+            self._samples = self._samples[round(skip * self._sample_rate) :]
 
         header_end = self._find_header()
 
@@ -85,44 +91,61 @@ class SSTVDecoder(object):
     def _peak_fft_freq(self, data):
         """Finds the peak frequency from a section of audio data"""
 
+        # We need to apply a window on the "raw" data to make the data has **periodicity**.
+        # The FFT requires the data to be periodic, or it results in a **spectral leakage**
+        # in the output of FFT (a "bad result" in simple).
+        # https://www.youtube.com/watch?v=pD7f6X9-_Kg
+        #
+        # Here we choose the Hann function as the window function.
         windowed_data = data * hann(len(data))
+
+        # The FFT function helps extract the spectral characteristics
+        # (the frequency-domain representation) of the data,
+        # frequency is one of them.
         fft = np.abs(np.fft.rfft(windowed_data))
 
         # Get index of bin with highest magnitude
         x = np.argmax(fft)
-        # Interpolated peak frequency
+        # Interpolate for more accurate peak frequency
         peak = barycentric_peak_interp(fft, x)
 
+        # The frequency interval between each bin
+        bin_interval = self._sample_rate / len(windowed_data)
         # Return frequency in hz
-        return peak * self._sample_rate / len(windowed_data)
+        return peak * bin_interval
 
     def _find_header(self):
         """Finds the approx sample of the end of the calibration header"""
 
-        header_size = round(spec.HDR_SIZE * self._sample_rate)
-        window_size = round(spec.HDR_WINDOW_SIZE * self._sample_rate)
+        window_size = round(spec.SEARCH_WINDOW_SIZE * self._sample_rate)
 
         # Relative sample offsets of the header tones
-        leader_1_sample = 0
-        leader_1_search = leader_1_sample + window_size
+        # note that the search windows of parts aren't equal to the actual length of parts.
+        leader_1_offset = 0
+        leader_1_search_end = leader_1_offset + window_size
 
-        break_sample = round(spec.BREAK_OFFSET * self._sample_rate)
-        break_search = break_sample + window_size
+        break_offset = round(spec.BREAK_OFFSET * self._sample_rate)
+        break_search_end = break_offset + window_size
 
-        leader_2_sample = round(spec.LEADER_OFFSET * self._sample_rate)
-        leader_2_search = leader_2_sample + window_size
+        leader_2_offset = round(spec.SECOND_LEADER_OFFSET * self._sample_rate)
+        leader_2_search_end = leader_2_offset + window_size
 
-        vis_start_sample = round(spec.VIS_START_OFFSET * self._sample_rate)
-        vis_start_search = vis_start_sample + window_size
+        vis_start_offset = round(spec.VIS_START_BIT_OFFSET * self._sample_rate)
+        vis_start_search_end = vis_start_offset + window_size
 
-        jump_size = round(0.002 * self._sample_rate)  # check every 2ms
+        # check(slide the checking window towards right) every 2ms
+        jump_size = round(spec.JUMP_SIZE * self._sample_rate)
+
+        header_size = round(spec.HDR_SIZE * self._sample_rate)
 
         # The margin of error created here will be negligible when decoding the
         # vis due to each bit having a length of 30ms. We fix this error margin
         # when decoding the image by aligning each sync pulse
-
+        # TODO For modes without synchronous pulses, correct the error here
         for current_sample in range(0, len(self._samples) - header_size, jump_size):
             # Update search progress message
+            # Why multiple of 256? Don't know.
+            # It seems that the "progress" variable result in every 0.5 seconds.
             if current_sample % (jump_size * 256) == 0:
                 progress = current_sample / self._sample_rate
                 util.log_info("Searching for calibration header... {:.1f}s".format(progress), recur=True)
@@ -130,12 +153,12 @@ class SSTVDecoder(object):
             search_end = current_sample + header_size
             search_area = self._samples[current_sample:search_end]
 
-            leader_1_area = search_area[leader_1_sample:leader_1_search]
-            break_area = search_area[break_sample:break_search]
-            leader_2_area = search_area[leader_2_sample:leader_2_search]
-            vis_start_area = search_area[vis_start_sample:vis_start_search]
+            leader_1_area = search_area[leader_1_offset:leader_1_search_end]
+            break_area = search_area[break_offset:break_search_end]
+            leader_2_area = search_area[leader_2_offset:leader_2_search_end]
+            vis_start_area = search_area[vis_start_offset:vis_start_search_end]
 
-            # Check they're the correct frequencies
+            # Check they're the correct frequencies:
             if (
                 abs(self._peak_fft_freq(leader_1_area) - 1900) < 50
                 and abs(self._peak_fft_freq(break_area) - 1200) < 50
@@ -156,7 +179,7 @@ class SSTVDecoder(object):
 
         for bit_idx in range(8):
             bit_offset = vis_start + bit_idx * bit_size
-            section = self._samples[bit_offset: bit_offset + bit_size]
+            section = self._samples[bit_offset : bit_offset + bit_size]
             freq = self._peak_fft_freq(section)
             # 1100 hz = 1, 1300hz = 0
             vis_bits.append(int(freq <= 1200))
