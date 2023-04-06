@@ -67,7 +67,7 @@ class SSTVDecoder(object):
         """
 
         if skip > 0.0:
-            self._samples = self._samples[round(skip * self._sample_rate) :]
+            self._samples = self._samples[round(skip * self._sample_rate):]
 
         header_end = self._find_header()
 
@@ -76,9 +76,10 @@ class SSTVDecoder(object):
 
         self.mode = self._decode_vis(header_end)
 
-        vis_end = header_end + round(spec.VIS_BIT_SIZE * 9 * self._sample_rate)
+        # image data is behind the header and VIS code
+        vis_end_offset = header_end + round(spec.VIS_BIT_SIZE * 9 * self._sample_rate)
 
-        image_data = self._decode_image_data(vis_end)
+        image_data = self._decode_image_data(vis_end_offset)
 
         return self._draw_image(image_data)
 
@@ -141,10 +142,9 @@ class SSTVDecoder(object):
         # The margin of error created here will be negligible when decoding the
         # vis due to each bit having a length of 30ms. We fix this error margin
         # when decoding the image by aligning each sync pulse
-        # TODO For modes without synchronous pulses, correct the error here
         for current_sample in range(0, len(self._samples) - header_size, jump_size):
             # Update search progress message
-            # Why multiple of 256? Don't know.
+            # NOT_SURE Why multiple of 256? Don't know.
             # It seems that the "progress" variable result in every 0.5 seconds.
             if current_sample % (jump_size * 256) == 0:
                 progress = current_sample / self._sample_rate
@@ -189,7 +189,8 @@ class SSTVDecoder(object):
         if not parity:
             raise ValueError("Error decoding VIS header (invalid parity bit)")
 
-        # LSB first so we must reverse and ignore the parity bit
+        # LSB (Least Significant Bit in CS, not Lower Sideband in signal modulation) first,
+        # so we must reverse and ignore the parity bit
         vis_value = 0
         for bit in vis_bits[-2::-1]:
             vis_value = (vis_value << 1) | bit
@@ -208,6 +209,7 @@ class SSTVDecoder(object):
 
         # TODO - improve this
 
+        # NOT_SURE Why 1.4 here?
         sync_window = round(self.mode.SYNC_PULSE * 1.4 * self._sample_rate)
         align_stop = len(self._samples) - sync_window
 
@@ -229,19 +231,22 @@ class SSTVDecoder(object):
             return end_sync
 
     def _decode_image_data(self, image_start):
-        """Decodes image from the transmission section of an desstv signal"""
+        """Decodes image from the transmission section of a desstv signal"""
 
+        # NOT_SURE How the WINDOW_FACTOR is determined for decoding pixels?
         window_factor = self.mode.WINDOW_FACTOR
         centre_window_time = (self.mode.PIXEL_TIME * window_factor) / 2
-        pixel_window = round(centre_window_time * 2 * self._sample_rate)
+        pixel_window = round(self.mode.PIXEL_TIME * window_factor * self._sample_rate)
 
         height = self.mode.LINE_COUNT
         channels = self.mode.CHAN_COUNT
         width = self.mode.LINE_WIDTH
+
         # Use list comprehension to init list so we can return data early
         image_data = [[[0 for i in range(width)] for j in range(channels)] for k in range(height)]
 
         seq_start = image_start
+
         if self.mode.HAS_START_SYNC:
             # Start at the end of the initial sync pulse
             seq_start = self._align_sync(image_start, start_of_sync=False)
