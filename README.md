@@ -1,10 +1,15 @@
 SSTV Decoder
 ============
 
+> Forked for self-learning, add more comments to explain the code.
+>
+> Additionally support the MP3 format.
+
 ![](https://raw.githubusercontent.com/colaclanth/sstv/master/examples/m1.png)
 
 A command line slow-scan television decoder that works on audio files rather than reading a soundcard (like most other decoders).
 Currently supports the following modes:
+
 * Martin 1, 2
 * Scottie 1, 2, DX
 * Robot 36, 72
